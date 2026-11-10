@@ -5,7 +5,7 @@ Keep under 80 lines. Update at the end of every task and before starting a fresh
 ## Current spec
 
 - Spec: S01 Foundation, `.kiro/specs/01-foundation/`
-- Stage: requirements.md and design.md APPROVED 2026-11-10, all design §3 dependencies approved (recorded in DECISIONS). tasks.md drafted, WAITING FOR OWNER APPROVAL. Next after approval: task 0 (optional repo move) then task 1 in a fresh chat.
+- Stage: requirements, design, and tasks APPROVED 2026-11-10; all design §3 dependencies approved (recorded in DECISIONS). Task 0 done: working copy is now `C:\dev\imbooored` (outside OneDrive). Next: task 1 in a fresh chat opened on `C:\dev\imbooored`, on a feature branch `s01/task-1-scaffold`.
 - Branch: none (git initialized on `main`, no commits yet)
 
 ## Last completed task

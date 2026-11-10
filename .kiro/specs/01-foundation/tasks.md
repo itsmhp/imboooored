@@ -1,6 +1,6 @@
 # S01 Foundation: Tasks
 
-Status: DRAFT, waiting for owner approval · Written 2026-11-10 · [requirements](./requirements.md) and [design](./design.md) approved 2026-11-10
+Status: APPROVED by the owner on 2026-11-10 · [requirements](./requirements.md) and [design](./design.md) approved 2026-11-10
 
 Rules for every task:
 - One task per chat session. Start with: "Read the steering files, docs/PROGRESS.md, and .kiro/specs/01-foundation/. Then do task N only."
@@ -11,7 +11,7 @@ Rules for every task:
 
 ## Task 0 (owner, optional, before task 1): move the repo out of OneDrive
 
-- [ ] 0. Move the working copy to a non-synced path (for example `C:\dev\imbooored`) before the first dependency install, because `node_modules` and `.venv` hold tens of thousands of small files.
+- [x] 0. (Done 2026-11-10 by a fresh `git clone` to `C:\dev\imbooored`; the OneDrive copy was left untouched for the owner to delete.) Move the working copy to a non-synced path (for example `C:\dev\imbooored`) before the first dependency install, because `node_modules` and `.venv` hold tens of thousands of small files.
   - Steps: close editors, move the folder, reopen it in Kiro, run `git status` (must be clean).
   - Not required for correctness; skipping it only risks slow sync and file locks.
 
