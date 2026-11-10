@@ -11,13 +11,13 @@ Rules for every task:
 
 ## Task 0 (owner, optional, before task 1): move the repo out of OneDrive
 
-- [x] 0. (Done 2026-11-10 by a fresh `git clone` to `C:\dev\imbooored`; the OneDrive copy was left untouched for the owner to delete.) Move the working copy to a non-synced path (for example `C:\dev\imbooored`) before the first dependency install, because `node_modules` and `.venv` hold tens of thousands of small files.
+- [x] 0. (Skipped by the owner on 2026-11-10: work stays in the OneDrive workspace. Accepted risk: slow sync and possible file locks from `node_modules` and `.venv`.) Move the working copy to a non-synced path (for example `C:\dev\imbooored`) before the first dependency install, because `node_modules` and `.venv` hold tens of thousands of small files.
   - Steps: close editors, move the folder, reopen it in Kiro, run `git status` (must be clean).
   - Not required for correctness; skipping it only risks slow sync and file locks.
 
 ## Tasks
 
-- [ ] 1. Workspace scaffold, approved dependencies, and failing tests
+- [x] 1. Workspace scaffold, approved dependencies, and failing tests (done 2026-11-10; see PROGRESS for the ESLint peer finding)
   - Create root `pyproject.toml` (uv workspace), `apps/api`, `apps/worker`, `packages/py-shared` `pyproject.toml` files with exact pins from design §3; root `package.json` (`packageManager: pnpm@12.18.0`), `pnpm-workspace.yaml`, `apps/web/package.json`, `packages/contracts/package.json` + README.
   - Re-read each registry before installing; if a newer patch exists, use it and update the approvals table in the same commit.
   - Run `uv lock`, `pnpm install`; commit `uv.lock` and `pnpm-lock.yaml`.

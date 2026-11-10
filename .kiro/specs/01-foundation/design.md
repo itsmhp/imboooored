@@ -325,6 +325,8 @@ N1-N4 are measured once and written to PROGRESS; N5 is covered by the logging te
 | Inter download at build time needs network | CI has network; if blocked later, vendor the font files under `apps/web/src/fonts` |
 | OneDrive sync of `node_modules` and `.venv` | Recommend moving the repo outside OneDrive before the first install; not a blocker |
 | OQ-5 hosting | Only docs in S01 |
+| Python workspace members are virtual (task 1) | `apps/api`, `apps/worker`, `packages/py-shared` use `[tool.uv] package = false` and are imported through `pythonpath` (pytest, mypy, and later the Dockerfiles), because an installable member needs a build backend (hatchling or uv_build) that is not approved. Revisit if a build backend is approved. |
+| ESLint 10 vs Next.js lint plugins (found in task 1) | `pnpm peers check` on 2026-11-10: `eslint-config-next@16.4.6` pulls `eslint-plugin-import@2.32.0`, `eslint-plugin-jsx-a11y@6.10.2`, and `eslint-plugin-react@7.37.5`, whose peer ranges stop at ESLint 9. Proposed fix: use `eslint@9.39.5` (latest 9.x, released 2026-07-10) instead of 10.14.0. That is a major-version change, so it needs owner approval before task 8. Until then ESLint 10.14.0 stays installed and unused (no lint config exists yet). |
 
 ## Verified sources
 

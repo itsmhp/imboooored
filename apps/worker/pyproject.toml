@@ -1,0 +1,15 @@
+[project]
+name = "imb-worker"
+version = "0.0.0"
+description = "imbooored background worker (asyncio). S01: leader lock and heartbeat only."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "pydantic==2.14.3",
+  "pydantic-settings==2.16.2",
+  "structlog==26.1.0",
+  "redis==8.1.0",
+]
+
+[tool.uv]
+# Virtual member: no build backend needed, imported via pythonpath (see S01 design section 14).
+package = false

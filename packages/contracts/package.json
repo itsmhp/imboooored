@@ -1,0 +1,6 @@
+{
+  "name": "@imbooored/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types generated from docs/api/openapi.yaml. Generation starts in S02."
+}

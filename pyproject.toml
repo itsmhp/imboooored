@@ -1,0 +1,60 @@
+[project]
+name = "imbooored"
+version = "0.0.0"
+description = "Workspace root for the imbooored Python services (not a package)."
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest==9.2.0",
+  "pytest-asyncio==1.4.1.post1",
+  "ruff==0.17.4",
+  "mypy==2.4.1",
+  "pip-audit==2.10.1",
+]
+
+[tool.uv]
+package = false
+required-version = "==0.13.7"
+
+[tool.uv.workspace]
+members = ["apps/api", "apps/worker", "packages/py-shared"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["packages/py-shared/src", "apps/api/src", "apps/worker/src", "infra/ci"]
+extend-exclude = ["apps/web", "packages/contracts"]
+
+[tool.ruff.lint]
+# T20 bans print (S01 R4.5); S105/S106 catch hard-coded secrets; S608 flags string-built SQL.
+select = ["E", "F", "W", "I", "B", "UP", "T20", "S105", "S106", "S608"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "imb_shared",
+  "imb_api",
+  "imb_worker",
+  "check_no_console",
+  "check_raw_sql",
+  "check_dep_approvals",
+  "check_compose",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["T20", "S105", "S106", "S608"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+explicit_package_bases = true
+mypy_path = ["packages/py-shared/src", "apps/api/src", "apps/worker/src", "infra/ci"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/py-shared/tests", "infra/ci/tests"]
+pythonpath = ["packages/py-shared/src", "apps/api/src", "apps/worker/src", "infra/ci"]
+addopts = ["--import-mode=importlib", "--strict-markers", "-m", "not integration"]
+markers = ["integration: needs real Postgres or Redis (Compose locally, service containers in CI)"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
