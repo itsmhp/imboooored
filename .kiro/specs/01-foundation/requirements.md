@@ -1,6 +1,6 @@
 # S01 Foundation: Requirements
 
-Status: DRAFT, waiting for owner approval · Written 2026-11-10 · Next: design.md only after approval
+Status: APPROVED by the owner on 2026-11-10 · Answers: pnpm (OQ-10); solo merge after green CI is acceptable for the alpha; OQ-5 hosting still open · Next: [design.md](./design.md)
 
 Sources read: `.kiro/steering/*`, [docs/00](../../../docs/00-PROJECT_BRIEF.md), [01](../../../docs/01-SPOTIFY_CONSTRAINTS.md), [02](../../../docs/02-ARCHITECTURE.md), [03](../../../docs/03-DATA_MODEL.md), [04](../../../docs/04-API_AND_EVENTS.md), [05](../../../docs/05-SECURITY_THREAT_MODEL.md), [07](../../../docs/07-ROADMAP.md), [PROGRESS](../../../docs/PROGRESS.md).
 

@@ -22,16 +22,48 @@ Record every architectural decision, especially where we deviate from the refere
 | OQ-7 | Minimum user age | S02 | 18+ self-declared |
 | OQ-8 | Retention: audit log, closed rooms, suggestions | S10a | Audit 400 days; suggestions anonymized after 180 days |
 | OQ-9 | Who is the data controller in the privacy policy (person or entity)? Get legal review for UU PDP? | S10a | Owner as individual; legal review before invites |
-| OQ-10 | Package manager pnpm or npm | S01 | pnpm workspaces |
+| OQ-10 | Package manager pnpm or npm | S01 | ANSWERED 2026-11-10: pnpm workspaces |
+| OQ-12 | Second reviewer on PRs, or solo merge after green CI? | S01 | ANSWERED 2026-11-10: solo merge after green CI for the alpha; branch protection requires the CI checks |
 | OQ-11 | Light theme in MVP? | S08 | No, dark only, revisit after alpha |
 
 ### Dependency approvals
 
 CI gate in [08](./08-TEST_STRATEGY.md) §5 item 11 checks this table. Empty until S01. Each row: package, registry URL, version, reason, owner approval date.
 
+Approved by the owner on 2026-11-10 from S01 design §3 ("ya setuju semuanya"). Facts behind each row are in [design §3](../.kiro/specs/01-foundation/design.md). If a newer patch exists at install time, the task updates the version here and the owner sees it in the diff; a minor or major change needs a new approval.
+
 | Package | Registry URL | Version | Reason | Approved (date) |
 |---|---|---|---|---|
-| (none yet) | | | | |
+| Flask | https://pypi.org/project/Flask/ | 3.1.3 | API framework | 2026-11-10 |
+| gunicorn | https://pypi.org/project/gunicorn/ | 26.2.0 | WSGI server | 2026-11-10 |
+| redis | https://pypi.org/project/redis/ | 8.1.0 | Redis client | 2026-11-10 |
+| SQLAlchemy | https://pypi.org/project/SQLAlchemy/ | 2.1.8 | Core queries with bound params | 2026-11-10 |
+| alembic | https://pypi.org/project/alembic/ | 1.20.1 | Migrations | 2026-11-10 |
+| psycopg | https://pypi.org/project/psycopg/ | 3.3.8 | Postgres driver (with `binary` extra) | 2026-11-10 |
+| psycopg-binary | https://pypi.org/project/psycopg-binary/ | 3.3.8 | Binary build pulled by `psycopg[binary]` | 2026-11-10 |
+| pydantic | https://pypi.org/project/pydantic/ | 2.14.3 | Schemas | 2026-11-10 |
+| pydantic-settings | https://pypi.org/project/pydantic-settings/ | 2.16.2 | Fail-fast settings | 2026-11-10 |
+| structlog | https://pypi.org/project/structlog/ | 26.1.0 | JSON logs with redaction | 2026-11-10 |
+| pytest | https://pypi.org/project/pytest/ | 9.2.0 | Tests (dev) | 2026-11-10 |
+| pytest-asyncio | https://pypi.org/project/pytest-asyncio/ | 1.4.1.post1 | Async tests (dev) | 2026-11-10 |
+| ruff | https://pypi.org/project/ruff/ | 0.17.4 | Lint (dev) | 2026-11-10 |
+| mypy | https://pypi.org/project/mypy/ | 2.4.1 | Types (dev) | 2026-11-10 |
+| pip-audit | https://pypi.org/project/pip-audit/ | 2.10.1 | SCA (dev) | 2026-11-10 |
+| next | https://www.npmjs.com/package/next | 16.4.6 | Web framework | 2026-11-10 |
+| react | https://www.npmjs.com/package/react | 19.3.1 | Required by Next.js | 2026-11-10 |
+| react-dom | https://www.npmjs.com/package/react-dom | 19.3.1 | Required by Next.js | 2026-11-10 |
+| typescript | https://www.npmjs.com/package/typescript | 6.0.3 | Types (dev) | 2026-11-10 |
+| tailwindcss | https://www.npmjs.com/package/tailwindcss | 4.3.5 | Styling | 2026-11-10 |
+| @tailwindcss/postcss | https://www.npmjs.com/package/@tailwindcss/postcss | 4.3.5 | Tailwind PostCSS plugin | 2026-11-10 |
+| postcss | https://www.npmjs.com/package/postcss | 8.5.32 | Required by the Tailwind plugin (dev) | 2026-11-10 |
+| eslint | https://www.npmjs.com/package/eslint | 10.14.0 | Lint (dev) | 2026-11-10 |
+| eslint-config-next | https://www.npmjs.com/package/eslint-config-next | 16.4.6 | Next.js lint rules (dev) | 2026-11-10 |
+| @types/react | https://www.npmjs.com/package/@types/react | 19.3.0 | Types (dev) | 2026-11-10 |
+| @types/react-dom | https://www.npmjs.com/package/@types/react-dom | 19.3.0 | Types (dev) | 2026-11-10 |
+| @types/node | https://www.npmjs.com/package/@types/node | 26.6.6 | Types (dev) | 2026-11-10 |
+| vitest | https://www.npmjs.com/package/vitest | 5.1.0 | Unit tests (dev) | 2026-11-10 |
+| pnpm (tool) | https://www.npmjs.com/package/pnpm | 12.18.0 | Package manager | 2026-11-10 |
+| uv (tool) | https://pypi.org/project/uv/ | 0.13.7 | Python env and lockfile | 2026-11-10 |
 
 ### ADR-001 Closed alpha with ≤ 5 hosts; listeners never authorize Spotify
 
@@ -157,6 +189,22 @@ CI gate in [08](./08-TEST_STRATEGY.md) §5 item 11 checks this table. Empty unti
 
 - Context: Policy requires attribution and link-back; artwork guidance says do not distort (third-party summary, UNVERIFIED).
 - Decision: No blurred/tinted artwork backgrounds, no animation of artwork. Solid zinc surfaces.
+
+### ADR-021 Start S01 and S02 before the host-token spike passes
+
+- Status: Accepted by the owner, 2026-11-10.
+- Context: M0 requires spike items 3 and 4 to pass with the host's token. On 2026-11-10 they passed only with a participant's token in a friend's Jam. The owner hosted a Jam but had no participant available, and chose to defer the test.
+- Decision: S01 (Foundation) and S02 (Identity) may proceed because they use no Spotify behavior. S03 and every later Spotify-facing spec stay blocked until 3a and 4a pass with the owner as host and at least one participant.
+- Alternatives: wait for a participant before any work (safest, slower); start S03 on the participant result (rejected: the design depends on the host token).
+- Consequences: if the host test fails, S01 and S02 stay reusable, but the core loop may need to change (for example, reading playback through a participant instead of the host, which would hit the 5-user allowlist). Recheck kill criteria K1 and K2 at that point.
+
+### ADR-022 Own fixed-window rate limiter instead of Flask-Limiter/limits (supersedes ADR-018)
+
+- Status: Accepted by the owner with the S01 design, 2026-11-10.
+- Context: ADR-018 picked Flask-Limiter and `limits`. S01 requires one limiter function for REST now and Socket.IO later, plus an injectable clock for tests (S01 R7.1, R7.5).
+- Decision: a small limiter in `packages/py-shared` using one atomic Redis Lua script (`INCR` + `PEXPIRE`) per fixed window, with the window derived from an injected clock. Mutations fail closed when Redis is down; read routes choose per rule.
+- Alternatives: Flask-Limiter (REST only, decorator-centric); `limits` directly (moving window, time read inside the library).
+- Consequences: two fewer dependencies and deterministic tests. A fixed window allows up to twice the limit across a window boundary; acceptable for the alpha, revisit with a sliding window if abuse shows up.
 
 ### Deviations from the reference design (index)
 

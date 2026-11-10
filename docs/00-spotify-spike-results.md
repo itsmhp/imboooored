@@ -1,6 +1,6 @@
 # 00 · Spotify Spike Results
 
-Status: PARTIAL RUN 2026-11-10 (items 3, 4, 6 need owner confirmation; item 5 needs a re-run) · Owner fills this in · Evidence = scrubbed JSON from `%USERPROFILE%\.imbooored\spike\evidence` (outside the repo)
+Status: PARTIAL RUN 2026-11-10. Host-with-participant test DEFERRED by the owner (no participant available). Item 6 not tested; item 5 needs a re-run. · Owner fills this in · Evidence = scrubbed JSON from `%USERPROFILE%\.imbooored\spike\evidence` (outside the repo)
 
 While a row says NOT RUN, the related claim in [01-SPOTIFY_CONSTRAINTS.md](./01-SPOTIFY_CONSTRAINTS.md) stays UNVERIFIED. Change a claim only after its row has a date and an evidence file name.
 
@@ -45,11 +45,16 @@ Result values: PASS, FAIL, PARTIAL, NOT RUN. Keep "Observed" to facts you saw, n
 
 | Criterion | Result |
 |---|---|
-| 3a passes (Jam track readable with host token) | NOT RUN |
-| 4a passes (queue push lands in Jam queue) | NOT RUN |
-| Kill criteria K1 or K2 triggered? (see [01](./01-SPOTIFY_CONSTRAINTS.md) §7) | NOT RUN |
+| 3a passes (Jam track readable with host token) | DEFERRED. Only proven with a participant token. |
+| 4a passes (queue push lands in Jam queue) | DEFERRED. Only proven with a participant token. |
+| Kill criteria K1 or K2 triggered? (see [01](./01-SPOTIFY_CONSTRAINTS.md) §7) | Not triggered by any result so far, but not cleared for the host case. |
 
-Decision (owner): GO / NO-GO / RETHINK, date, reason:
+Decision (owner), 2026-11-10: DEFER the host-with-participant test because no second participant is available. Proceed with S01 and S02, which use no Spotify behavior. S03 and every later Spotify-facing spec stay blocked until 3a and 4a pass with A as host and at least one participant in the Jam. Accepted risk: if the host test fails later, S01 and S02 remain useful, but the product concept may change (see ADR-021).
+
+## Tooling note (2026-11-10)
+
+- The Spotify MCP server (`marcelmarais/spotify-mcp-server`, commit `7d7e400`, local patch: 3 scopes) is installed outside the repo after the owner accepted the SkillSpector HIGH findings. It summarizes responses, so it does not record HTTP status or headers. Use `spike.ps1` for evidence; treat MCP reads as observations only.
+- Observation via MCP with account A's token: `getNowPlaying` returned the playing track and an active Computer device. The call did not show whether a Jam was active at that moment, so it does not change row 3a.
 
 ## Facts to carry into the docs after the spike
 

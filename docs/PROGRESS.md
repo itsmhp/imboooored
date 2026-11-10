@@ -5,7 +5,7 @@ Keep under 80 lines. Update at the end of every task and before starting a fresh
 ## Current spec
 
 - Spec: S01 Foundation, `.kiro/specs/01-foundation/`
-- Stage: requirements.md drafted, WAITING FOR OWNER APPROVAL. Do not write design.md or code until approved.
+- Stage: requirements.md and design.md APPROVED 2026-11-10, all design §3 dependencies approved (recorded in DECISIONS). tasks.md drafted, WAITING FOR OWNER APPROVAL. Next after approval: task 0 (optional repo move) then task 1 in a fresh chat.
 - Branch: none (git initialized on `main`, no commits yet)
 
 ## Last completed task
@@ -24,7 +24,8 @@ Keep under 80 lines. Update at the end of every task and before starting a fresh
 
 ## Gate status (do not skip)
 
-- Spike item 3 and 4 with the Spotify **host** token: NOT TESTED (only tested as a Jam participant). Blocks S03 onward, not S01 or S02.
+- Spike item 3 and 4 with the Spotify **host** token: DEFERRED by the owner on 2026-11-10 (no participant available; ADR-021). Only proven as a Jam participant. Blocks S03 onward, not S01 or S02.
+- Spotify MCP server installed outside the repo (3 scopes). Use it for observations; `spike.ps1` stays the evidence source.
 - Spike item 6 (403 for a non-allowlisted account): NOT TESTED (account B is on the allowlist).
 - Spike item 5 `limit=11`, default limit, `/tracks/{id}`: re-run needed.
 
