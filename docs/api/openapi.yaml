@@ -1,0 +1,732 @@
+openapi: 3.1.0
+info:
+  title: imbooored API
+  version: 0.1.0-draft
+  description: |
+    Planning draft (2026-11-09). Source of truth for REST contracts; see docs/04-API_AND_EVENTS.md
+    for Socket.IO events, rate limits, and authz rules. Spotify behavior referenced here is UNVERIFIED
+    until docs/00-spotify-spike-results.md exists.
+servers:
+  - url: https://api.example.invalid
+    description: Placeholder. Real domains are an open question (docs/DECISIONS.md OQ-5).
+security:
+  - clerkSession: []
+tags:
+  - name: health
+  - name: me
+  - name: spotify
+  - name: feed
+  - name: rooms
+  - name: suggestions
+  - name: admin
+  - name: webhooks
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Liveness probe (ADR-013 exception, no auth)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+
+  /api/v1/me:
+    get:
+      tags: [me]
+      summary: Current user
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    patch:
+      tags: [me]
+      summary: Update own profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                display_name: { type: string, minLength: 1, maxLength: 40 }
+                age_confirmed: { type: boolean, const: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /api/v1/me/vibe-points:
+    get:
+      tags: [me]
+      summary: Own Vibe Points balance and recent entries
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [balance, entries]
+                properties:
+                  balance: { type: integer }
+                  entries:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [delta, reason, created_at]
+                      properties:
+                        delta: { type: integer }
+                        reason: { type: string, enum: [suggestion_queued, vote_on_queued, host_room_hour, admin_adjust] }
+                        created_at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /api/v1/me/exports:
+    post:
+      tags: [me]
+      summary: Request a data export
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrivacyRequest' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/me/exports/{request_id}:
+    get:
+      tags: [me]
+      summary: Export status
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrivacyRequest' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /api/v1/me/deletion:
+    post:
+      tags: [me]
+      summary: Request account deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirm]
+              properties:
+                confirm: { type: string, const: HAPUS }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrivacyRequest' }
+        '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/spotify/connect:
+    post:
+      tags: [spotify]
+      summary: Start Spotify Authorization Code + PKCE (host only)
+      responses:
+        '200':
+          description: Authorize URL
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [authorize_url]
+                properties:
+                  authorize_url: { type: string, format: uri, pattern: '^https://accounts\.spotify\.com/authorize\?' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/spotify/callback:
+    post:
+      tags: [spotify]
+      summary: Complete Spotify connect (called by the web callback page)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code, state]
+              properties:
+                code: { type: string, minLength: 1, maxLength: 1024 }
+                state: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpotifyConnection' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403':
+          description: FORBIDDEN or SPOTIFY_NOT_ALLOWLISTED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/spotify/connection:
+    delete:
+      tags: [spotify]
+      summary: Disconnect Spotify, close live room, delete stored tokens
+      responses:
+        '204': { description: Disconnected }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /api/v1/feed:
+    get:
+      tags: [feed]
+      summary: Live rooms, newest first
+      parameters:
+        - name: tag
+          in: query
+          schema: { type: string, pattern: '^[a-z0-9_]{2,30}$' }
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [rooms, next_cursor]
+                properties:
+                  rooms:
+                    type: array
+                    items: { $ref: '#/components/schemas/RoomCard' }
+                  next_cursor: { type: [string, 'null'] }
+        '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/tags/trending:
+    get:
+      tags: [feed]
+      summary: Top tags by number of live rooms
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [tags]
+                properties:
+                  tags:
+                    type: array
+                    maxItems: 20
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [slug, live_rooms]
+                      properties:
+                        slug: { $ref: '#/components/schemas/TagSlug' }
+                        live_rooms: { type: integer, minimum: 0 }
+
+  /api/v1/rooms:
+    post:
+      tags: [rooms]
+      summary: Open a room (host with active Spotify connection)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoomRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomCard' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/rooms/{room_id}:
+    parameters:
+      - $ref: '#/components/parameters/RoomId'
+    get:
+      tags: [rooms]
+      summary: Room detail with now-playing snapshot
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomCard' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [rooms]
+      summary: Change vote threshold (owner host)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [vote_threshold]
+              properties:
+                vote_threshold: { type: integer, minimum: 2, maximum: 10 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomCard' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /api/v1/rooms/{room_id}/close:
+    parameters:
+      - $ref: '#/components/parameters/RoomId'
+    post:
+      tags: [rooms]
+      summary: Close room (owner host or admin). Idempotent.
+      responses:
+        '200':
+          description: Closed (or already closed)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [closed] }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /api/v1/rooms/{room_id}/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/RoomId'
+    get:
+      tags: [suggestions]
+      summary: Suggestions in a live room
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, pattern: '^(pending|approved|pushing|queued|failed|rejected)(,(pending|approved|pushing|queued|failed|rejected)){0,5}$' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 50 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [suggestions]
+                properties:
+                  suggestions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Suggestion' }
+    post:
+      tags: [suggestions]
+      summary: Suggest a track (member of the live room)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [track_id]
+              properties:
+                track_id: { $ref: '#/components/schemas/TrackId' }
+      responses:
+        '200':
+          description: Already suggested; existing item returned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Suggestion' }
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Suggestion' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /api/v1/rooms/{room_id}/suggestions/{suggestion_id}/vote:
+    parameters:
+      - $ref: '#/components/parameters/RoomId'
+      - $ref: '#/components/parameters/SuggestionId'
+    put:
+      tags: [suggestions]
+      summary: Upvote (idempotent)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [vote_count, status, voted]
+                properties:
+                  vote_count: { type: integer, minimum: 0 }
+                  status: { $ref: '#/components/schemas/SuggestionStatus' }
+                  voted: { type: boolean, const: true }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/rooms/{room_id}/suggestions/{suggestion_id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/RoomId'
+      - $ref: '#/components/parameters/SuggestionId'
+    post:
+      tags: [suggestions]
+      summary: Host rejects a suggestion
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Suggestion' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /api/v1/search/tracks:
+    get:
+      tags: [suggestions]
+      summary: Search Spotify catalog through our server (minimal DTO, cached)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [tracks]
+                properties:
+                  tracks:
+                    type: array
+                    maxItems: 10
+                    items: { $ref: '#/components/schemas/Track' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /api/v1/admin/rooms:
+    get:
+      tags: [admin]
+      summary: Live rooms and Spotify breaker/budget state (admin)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [rooms, spotify]
+                properties:
+                  rooms:
+                    type: array
+                    items: { $ref: '#/components/schemas/RoomCard' }
+                  spotify:
+                    type: object
+                    additionalProperties: false
+                    required: [breaker_state, calls_last_minute, budget_per_minute]
+                    properties:
+                      breaker_state: { type: string, enum: [closed, open_rate_limited, open_quota, open_upstream] }
+                      open_until: { type: [string, 'null'], format: date-time }
+                      calls_last_minute: { type: integer }
+                      budget_per_minute: { type: integer }
+        '403': { $ref: '#/components/responses/Error' }
+
+  /api/v1/admin/users/{user_id}/role:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [admin]
+      summary: Change a user's role (admin; max 5 hosts)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicUser' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /api/v1/webhooks/clerk:
+    post:
+      tags: [webhooks]
+      summary: Clerk webhook (Svix signature verified before parsing)
+      security: []
+      parameters:
+        - { name: svix-id, in: header, required: true, schema: { type: string, maxLength: 100 } }
+        - { name: svix-timestamp, in: header, required: true, schema: { type: string, pattern: '^[0-9]{10}$' } }
+        - { name: svix-signature, in: header, required: true, schema: { type: string, maxLength: 1000 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '204': { description: Processed or duplicate }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+components:
+  securitySchemes:
+    clerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token, verified against Clerk JWKS (iss, exp, nbf, azp).
+
+  parameters:
+    RoomId:
+      name: room_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SuggestionId:
+      name: suggestion_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RequestId:
+      name: request_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_FAILED, INVALID_JAM_LINK, INVALID_TAG, TOO_MANY_TAGS, UNAUTHENTICATED,
+                     FORBIDDEN, SPOTIFY_NOT_ALLOWLISTED, NOT_FOUND, ROOM_ALREADY_LIVE, ROOM_NOT_LIVE,
+                     SPOTIFY_NOT_CONNECTED, SPOTIFY_NEEDS_REAUTH, IDEMPOTENCY_CONFLICT, PAYLOAD_TOO_LARGE,
+                     RATE_LIMITED, SPOTIFY_UNAVAILABLE, SPOTIFY_QUOTA, DEPENDENCY_UNAVAILABLE, HOST_LIMIT_REACHED]
+            message: { type: string, maxLength: 200 }
+            request_id: { type: string, maxLength: 64 }
+            details: { type: object }
+
+    Role:
+      type: string
+      enum: [listener, host, admin]
+
+    TagSlug:
+      type: string
+      pattern: '^[a-z0-9_]{2,30}$'
+
+    TrackId:
+      type: string
+      pattern: '^[A-Za-z0-9]{22}$'
+
+    PublicUser:
+      type: object
+      additionalProperties: false
+      required: [id, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string, maxLength: 40 }
+
+    Me:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, role, spotify, vibe_points, age_confirmed]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string, maxLength: 40 }
+        role: { $ref: '#/components/schemas/Role' }
+        age_confirmed: { type: boolean }
+        vibe_points: { type: integer }
+        spotify: { $ref: '#/components/schemas/SpotifyConnection' }
+
+    SpotifyConnection:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [none, active, needs_reauth] }
+        expires_warning_at: { type: [string, 'null'], format: date-time }
+
+    Track:
+      type: object
+      additionalProperties: false
+      required: [id, title, artists, album, cover_url, duration_ms, spotify_url]
+      properties:
+        id: { $ref: '#/components/schemas/TrackId' }
+        title: { type: string, maxLength: 300 }
+        artists:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string, maxLength: 200 }
+        album: { type: string, maxLength: 300 }
+        cover_url: { type: [string, 'null'], format: uri }
+        duration_ms: { type: integer, minimum: 1 }
+        spotify_url: { type: string, pattern: '^https://open\.spotify\.com/track/[A-Za-z0-9]{22}$' }
+
+    NowPlaying:
+      type: object
+      additionalProperties: false
+      required: [state, track, progress_ms, is_playing, observed_at_ms]
+      properties:
+        state: { type: string, enum: [playing, paused, nothing, stale] }
+        track: { oneOf: [ { $ref: '#/components/schemas/Track' }, { type: 'null' } ] }
+        progress_ms: { type: integer, minimum: 0 }
+        is_playing: { type: boolean }
+        observed_at_ms: { type: integer }
+
+    RoomCard:
+      type: object
+      additionalProperties: false
+      required: [id, host, tags, jam_link, listener_count, vote_threshold, status, now_playing, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        host: { $ref: '#/components/schemas/PublicUser' }
+        tags:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { $ref: '#/components/schemas/TagSlug' }
+        jam_link: { type: string, maxLength: 200 }
+        listener_count: { type: integer, minimum: 0 }
+        vote_threshold: { type: integer, minimum: 2, maximum: 10 }
+        status: { type: string, enum: [live, closed] }
+        now_playing: { $ref: '#/components/schemas/NowPlaying' }
+        created_at: { type: string, format: date-time }
+
+    CreateRoomRequest:
+      type: object
+      additionalProperties: false
+      required: [jam_link, tags]
+      properties:
+        jam_link: { type: string, minLength: 10, maxLength: 200 }
+        tags:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { type: string, minLength: 2, maxLength: 31 }
+        vote_threshold: { type: integer, minimum: 2, maximum: 10, default: 3 }
+
+    SuggestionStatus:
+      type: string
+      enum: [pending, approved, pushing, queued, failed, rejected, cancelled]
+
+    Suggestion:
+      type: object
+      additionalProperties: false
+      required: [id, track, status, vote_count, threshold, suggested_by, voted_by_me, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        track: { $ref: '#/components/schemas/Track' }
+        status: { $ref: '#/components/schemas/SuggestionStatus' }
+        vote_count: { type: integer, minimum: 0 }
+        threshold: { type: integer, minimum: 2, maximum: 10 }
+        suggested_by: { oneOf: [ { $ref: '#/components/schemas/PublicUser' }, { type: 'null' } ] }
+        voted_by_me: { type: boolean }
+        last_error_code: { type: [string, 'null'], enum: [no_active_device, premium_required, rate_limited, quota_exceeded, upstream_error, null] }
+        created_at: { type: string, format: date-time }
+
+    PrivacyRequest:
+      type: object
+      additionalProperties: false
+      required: [id, kind, status, requested_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [delete, export] }
+        status: { type: string, enum: [pending, processing, done, failed] }
+        requested_at: { type: string, format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+        download_url: { type: [string, 'null'], format: uri, description: 'Signed, expires in 24 h; export only' }

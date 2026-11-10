@@ -1,0 +1,27 @@
+# Secrets and local config (security rule 3)
+.env
+.env.*
+!.env.example
+*.env.ps1
+spotify-config.json
+tokens-*.json
+
+# Dependencies and build output
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.next/
+dist/
+build/
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local spike output (kept outside the repo; ignored here as a safety net)
+evidence/
+
+# OS / editor
+.DS_Store
+Thumbs.db
